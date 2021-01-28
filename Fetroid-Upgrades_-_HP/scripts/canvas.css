@@ -1,0 +1,90 @@
+article, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, button, section, canvas {
+    display: block;
+}
+
+canvas {
+  margin: 0 auto;
+  border: 1px solid black;
+  box-shadow: 4px 4px 2px gray;
+}
+
+#content {
+  margin 0 auto;
+}
+
+#envoltorio {
+  margin: 0 auto;
+  border: 2px solid green;
+}
+
+#esquerda {
+  width: 150px;
+  float: left;
+  border: 1px solid red;
+}
+
+#direita {
+  width: 120px;
+  float: right;
+  border: 1px solid red;
+}
+
+#status {
+  width: auto;
+  height: auto;
+  margin: 500 0 0 0;
+
+}
+
+#direita  [type=button], #esquerda [type=button] {
+  background-color: #db6300; /* Green */
+  border: 1px solid #ad4e00;
+  width: 120px;
+  height: auto;
+  padding: 16px 31px;
+
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-size: 16px;
+
+  display: inline-block;
+  margin: 4px 2px;
+}
+
+button:hover {
+  filter: saturate(3);
+}
+button:focus{
+  filter:brightness(1.8);
+}
+
+@media only screen and (max-width: 1200px) {
+
+  #envoltorio {
+    background-color: red;
+  }
+
+  #esquerda {
+    width: 100px
+  }
+
+  #direita {
+    width: 100px;
+  }
+
+  @media only screen and (max-width: 760px) {
+
+    #envoltorio {
+      background-color: green;
+    }
+
+    #esquerda {
+      width: 80px
+    }
+
+    #direita {
+      width: 80px;
+    }
+
+}

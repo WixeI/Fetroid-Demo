@@ -1,0 +1,562 @@
+<!doctype html>
+<html>
+<head>
+
+    <title> JS Map Creator </title>
+    <meta charset="utf-8"></meta>
+
+    <link rel="stylesheet" type="text/css" href="scripts/canvas.css"></link>
+    <script type="text/javascript" src="scripts/logicalFunctions.js"></script>
+</head>
+
+
+<body bgcolor = "#323436" oncontextmenu = "return false">
+  <div id="envoltorio">
+
+
+    <div id="content">
+      <canvas id="meuCanvas" width="200" height="100"></canvas>
+    </div>
+
+
+    <header id="header">
+      <input type="text" value="me ignore" id="myInput">
+    </header>
+
+
+    <header id="cima">
+      <button id="ControlC" type="button" onclick="escritaDeTudo()"> Copiar para área de transferência </button>
+    </header>
+
+
+    <aside id="esquerda">
+      <button id="PlusColuna" type="button" onclick="changeGridButton('PlusColuna')" > +1 Coluna</button>
+      <button id="MinusColuna" type="button" onclick="changeGridButton('MinusColuna')" > -1 Coluna</button>
+      <br>
+      <button id="PlusLinha" type="button" onclick="changeGridButton('PlusLinha')" > +1 Linha </button>
+      <button id="MinusLinha" type="button" onclick="changeGridButton('MinusLinha')" > -1 Linha </button>
+    </aside>
+
+
+    <aside id="direita">
+      <button id="wallButton" type="button" onclick="selectBrush(0)" > Wall</button>
+      <button id="thwompButton" type="button" onclick="selectBrush(1)" > Thwomp </button>
+      <button id="crazyJButton" type="button" onclick="selectBrush(2)" > Crazy J </button>
+      <button id="giroButton" type="button" onclick="selectBrush(3)" > Giro </button>
+      <button id="protasmaButton" type="button" onclick="selectBrush(4)" > Protasma </button>
+      <button id="fetesmaButton" type="button" onclick="selectBrush(5)" > Fetesma </button>
+      <button id="upgradeVidaButton" type="button" onclick="selectBrush(20)" > HP Up </button>
+      <br>
+      <button id="screenGridaButton" type="button" onclick="selectScreen(0)" > Tela Grid </button>
+      <button id="screenDrawButton" type="button" onclick="selectScreen(1)" > Tela Draw </button>
+
+
+    </aside>
+
+    <footer id="status">
+      <button id"incrementPara1" type="button" onClick=""> + </button>
+      <button id"decrementPara1" type="button" onClick=""> - </button>
+    </footer>
+
+
+  </div>
+    <script>
+
+/*
+                      *******************************
+                      *   O QUE FALTA IMPLEMENTAR   *
+                      *******************************
+
+                      - IMPLEMENTAR BOTÕES ÚNICOS PARA DRAW
+                      - LIMITAR BRUSHES PARA AGIREM APENAS EM DETERMINADAS TELAS (Evitar que você crie um mob na tela de Draw, por exemplo)
+                      OBS: O exemplo citado nos parênteses acima ainda faria o monstro na grid correta (a de colisão),
+                           é uma mudança facultativa que apenas adiciona uma camada de organização e função das telas
+                      - FAZER COM QUE A GRID DRAW SEJA DE FATO DESENHADA (No momento apenas há um grande quadrado verde no local de código para isso)
+*/
+
+  var
+    canvas,
+    canvasWindowPercent,
+    style,
+    ctx,
+    frames = 0,
+    width = 1080,
+    height = 540,
+    tam,
+    mClick = {x: -1, y: -1},
+    mAux = false,
+    write = true,
+    offset = {x: 0, y: 0},
+    offsetFixo = {x: 0, y: 0},
+    grid = [],
+    gridDraw = [],
+    gI,
+    gJ;
+
+//VARIAVEIS A MAIS
+  var
+    brushState = 0;
+    screenState = 0; // 0 = Tela da Grid | 1 = Tela do Draw
+    escritaMobList = "this.fillMobList = function(){"
+    escritaUpgradeList = "this.fillUpgradeList =  function(){"
+    range = 2,
+    mobList = [],
+    upgradeList = [],
+
+    //  MONSTRO GENÉRICO. VAI SER DE CADA ESPÉCIE DEPENDENDO DO "this.monsterType"
+    class mob {
+        constructor(spawnI, spawnJ, mobType, par /*ARRAY*/){
+          this.spawnI = spawnI;
+          this.spawnJ = spawnJ;
+          this.mobType = mobType; // ISSO AQUI É LITERALMENTE PRA SER O NOME DO OBJETO DO MOB LÁ NA "area_01.js"
+          this.par = par;  //  PARÂMETROS DO MOB ESPECÍFICO. DEPENDENDO DO TIPO, PODE TER MAIS OU MENOS ELEMENTOS NESSA ARRAY
+        }
+    }
+
+    class upgrade {
+        constructor(spawnI, spawnJ, upgradeType, par /*ARRAY*/){
+          this.spawnI = spawnI;
+          this.spawnJ = spawnJ;
+          this.upgradeType = upgradeType; // ISSO AQUI É LITERALMENTE PRA SER O NOME DO OBJETO DO UPGRADE LÁ NA "area_01.js"
+          this.par = par;  //  PARÂMETROS DO MOB ESPECÍFICO. DEPENDENDO DO TIPO, PODE TER MAIS OU MENOS ELEMENTOS NESSA ARRAY
+        }
+    }
+
+    // LEMBRAR DE COLOCAR NO "CTRL + C" PRA ARMAZENAR '}' NO FINAL DE "escritaMobList"
+
+// ---------------------------------------------------------------------------------------------------  FUNÇÕES MAIS GERAIS     <<<<<<<<<<<<<<<<<<<<<<<
+
+
+  function createGrid(){
+    gridEmpty = [];
+    grid = gridEmpty;
+
+    for(var i = 0; i < gI; i++){
+      grid.push(new Array());
+    }
+
+    for(var i = 0; i < gI; i++){
+      for(var j = 0; j < gJ; j++){
+        grid[i].push(0);
+      }
+    }
+
+    gridDraw = grid;
+
+    console.log(grid);
+
+  }
+
+  function drawGrid(){
+    for(var i = 0; i < gI+1; ++i){
+      ctx.beginPath();
+      ctx.moveTo(0 +offset.x, i*tam +offset.y);
+      ctx.lineTo(gJ*tam +offset.x, i*tam +offset.y);
+      ctx.stroke();
+    }
+
+    for(var j = 0; j < gJ+1; ++j){
+      ctx.beginPath();
+      ctx.moveTo(j*tam +offset.x, 0 +offset.y);
+      ctx.lineTo(j*tam +offset.x, gI*tam +offset.y);
+      ctx.stroke();
+    }
+
+    //----------------------------------------------  DESENHO DA GRID DE COLISÃO  ----------------------
+    // DEFINIÇÃO DA OPACIDADE DA GRID
+    if (screenState == 0)
+      ctx.globalAlpha = 1;
+    else
+      ctx.globalAlpha = 0.3;
+
+    // O DESENHO DA GRID
+    for(var i = 0; i < gI; i++){
+      for(var j = 0; j < gJ; j++){
+        if(grid[i][j] == 1){
+          ctx.fillStyle = "Black";
+          ctx.fillRect(j * tam +offset.x, i * tam +offset.y, tam, tam);
+        }
+        else if (grid[i][j] == "thwomp"){
+          ctx.fillStyle = "Blue";
+          ctx.fillRect(j * tam +offset.x, i * tam +offset.y, tam, tam);
+        }
+        else if (grid[i][j] == "crazyJ"){
+          ctx.fillStyle = "Orange";
+          ctx.fillRect(j * tam +offset.x, i * tam +offset.y, tam, tam);
+        }
+
+        else if (grid[i][j] == "upgradeVida"){
+          ctx.fillStyle = "hsl(149, 58%, 50%)";
+          ctx.fillRect(j * tam +offset.x, i * tam +offset.y, tam, tam);
+        }
+
+      }
+    }
+
+    //----------------------------------------------  DESENHO DA GRID DE DRAW  ----------------------
+    // DEFINIÇÃO DA OPACIDADE DA GRID
+    if (screenState == 0)
+      ctx.globalAlpha = 0.2;
+    else
+      ctx.globalAlpha = 0.8;
+
+    // O DESENHO DA GRID
+    ctx.fillStyle = "hsl(149, 58%, 50%)";
+    ctx.fillRect(0, 0, tam*3, tam*3);
+
+
+    // FAZ A OPACIDADE VOLTAR A 100% PARA QUALQUER DESENHO POSTERIOR
+    ctx.globalAlpha = 1;
+  }
+
+  function mDown(evt){
+
+    switch (evt.button){
+      case 0: // BOTÃO ESQUERDO
+        write = true;
+        // Checa se o clique foi dentro da grid
+        if(pointRectCollision({x: evt.layerX, y: evt.layerY},{x: offset.x, y: offset.y, width: tam*gJ, height: tam*gI})) {
+          // Faz a ação do botão esquerdo dependendo do brushState selecionado
+          let currentI = Math.floor((evt.layerY-offset.y)/tam),
+              currentJ = Math.floor((evt.layerX-offset.x)/tam),
+              par = [];
+
+          switch (brushState) {
+                case 0: // WALL
+                    if(write){
+                      if(grid[currentI][currentJ] != 0 || grid[currentI][currentJ] != 1){ // VERIFICA SE O BLOCO CLICADO É UM MONSTRO
+                        for(var aux = mobList.length - 1; aux >= 0; aux--){ // Passa pela lista de monstros procurando o que tenha a posição clicada
+                          if(mobList[aux].spawnI == currentI && mobList[aux].spawnJ == currentJ)
+                            mobList.splice(aux, 1); // Remove o monstro
+                        }
+
+                        for(var aux = upgradeList.length - 1; aux >= 0; aux--){ // Passa pela lista de upgrades procurando o que tenha a posição clicada
+                          if(upgradeList[aux].spawnI == currentI && upgradeList[aux].spawnJ == currentJ)
+                            upgradeList.splice(aux, 1); // Remove o upgrade
+                        }
+
+                      }
+
+                      grid[currentI][currentJ] = 1; // Transforma o elemento em "1"
+                    }
+                  mAux = true;
+                  break;
+                case 1: // THWOMP
+                  grid[currentI][currentJ] = "thwomp"
+
+                  // ADIÇÃO DE PARÂMETROS ESPECÍFICOS:
+                  par = [2];  // Número de blocos de queda
+
+                  //  ADIÇÃO DO NOVO MOB À LISTA
+                  mobList.push(new mob(currentI, currentJ, "thwomp", par));
+
+                  break;
+                case 2: // CRAZY J
+                  grid[currentI][currentJ] = "crazyJ"
+
+                  // ADIÇÃO DE PARÂMETROS ESPECÍFICOS:
+                  par = [2];  // Número de blocos que anda para a direita
+
+                  //  ADIÇÃO DO NOVO MOB À LISTA
+                  mobList.push( new mob(currentI, currentJ, "crazyJ", par));
+
+                  break;
+                case 3: // GIRO
+
+                  break;
+                case 4: // PROTASMA
+
+                  break;
+                case 5: // FETESMA
+
+                  break;
+                // -------------------------------------------  UPGRADES ---------------------------------------------
+                case 20: // UPGRADE DE VIDA
+                  grid[currentI][currentJ] = "upgradeVida";
+
+                  // ADIÇÃO DE PARÂMETROS ESPECÍFICOS:
+                  par = [];  // Número de blocos que anda para a direita
+
+                  // ADIÇÃO DO UPGRADE À LISTA
+                  upgradeList.push( new upgrade(currentI, currentJ, "upgradeVida"));
+                default:
+
+              }
+          }
+
+        break;
+
+      case 1: // BOTÃO DA RODINHA (MEIO)
+        mClick = {x: evt.layerX, y: evt.layerY};
+        console.log(mClick.x + " " + mClick.y);
+        break;
+      case 2: // BOTÃO DIREITO
+        write = false;
+
+        let currentI = Math.floor((evt.layerY-offset.y)/tam),
+            currentJ = Math.floor((evt.layerX-offset.x)/tam);
+
+        if(pointRectCollision({x: evt.layerX, y: evt.layerY},{x: offset.x , y: offset.y, width: tam*gJ, height: tam*gI})){
+          if(write)
+            grid[currentI][currentJ] = 1;
+          else {
+            if(grid[currentI][currentJ] != 0 || grid[currentI][currentJ] != 1){ // Se o elemento não for "1" nem "0":
+              for(var aux = mobList.length - 1; aux >= 0; aux--){ // Passa pela lista de monstros procurando o que tenha a posição clicada
+                if(mobList[aux].spawnI == currentI && mobList[aux].spawnJ == currentJ)
+                  mobList.splice(aux, 1); // Remove o monstro
+              }
+
+              for(var aux = upgradeList.length - 1; aux >= 0; aux--){ // Passa pela lista de upgrades procurando o que tenha a posição clicada
+                if(upgradeList[aux].spawnI == currentI && upgradeList[aux].spawnJ == currentJ)
+                  upgradeList.splice(aux, 1); // Remove o upgrade
+              }
+
+            }
+
+            grid[currentI][currentJ] = 0; // Transforma o elemento em "0"
+          }
+
+        }
+        mAux = true;
+        break;
+
+    }
+    console.log(evt.layerX);
+    console.log(evt.layerY);
+  }
+
+  function mUp(evt){
+    switch (evt.button){
+      case 0:
+        mAux = false;
+        break;
+      case 1:
+        mClick = {x: -1, x: -1};
+        break;
+      case 2:
+        mAux = false;
+        break;
+    }
+  }
+
+  function mMove(evt){
+    if(mClick.x != -1 && mClick.y != -1){
+      offset.x += (mClick.x - evt.layerX)/10;
+      offset.y += (mClick.y - evt.layerY)/10;
+    }
+
+    if(mAux && pointRectCollision({x: evt.layerX, y: evt.layerY},
+    {x: offset.x, y: offset.y, width: tam*gJ, height: tam*gI})){
+      if(write)
+        grid[Math.floor((evt.layerY-offset.y)/tam)][Math.floor((evt.layerX-offset.x)/tam)] = 1;
+      else
+        grid[Math.floor((evt.layerY-offset.y)/tam)][Math.floor((evt.layerX-offset.x)/tam)] = 0;
+    }
+
+  }
+
+  function mWheel(evt){
+    if (evt.deltaY < 0) {
+      tam -= 5;
+    }
+    if (evt.deltaY > 0) {
+      tam += 5;
+    }
+  }
+
+  function keyDown(evt){
+
+    // SE 'CONTROL' + 'C' FOR APERTADO, COPIAR ESCRITA DO MAPA PRO CONTROL + C
+    if (evt.keyCode == 67 && evt.ctrlKey){
+      escritaDeTudo();
+    }
+
+
+
+  }
+
+  //----------------------------------------------------------------------------------------------------           BOTÕES <<<<<<<<<<<<<<<<<<<<<<<
+
+  function changeGridButton(comando){
+
+        if (comando == "PlusColuna"){
+          for (i = 0; i < gI; i++){
+            grid[i].push(0);
+            gridDraw[i].push(0);
+          }
+          gJ++;
+        } else if (comando == "MinusColuna"){
+          if (gJ != 1){
+            for (i = 0; i < gI; i++){
+              grid[i].pop(0);
+              gridDraw[i].pop(0);
+            }
+            gJ--;
+          }
+        } else if (comando == "PlusLinha"){
+          grid.push(new Array());
+          gI++;
+          for(j = 0; j < gJ; j++){
+            grid[gI - 1].push(0);
+            gridDraw[gI - 1].push(0);
+          }
+        } else if (comando == "MinusLinha"){
+            if (gI != 1){
+              grid.pop(new Array());
+              gridDraw.pop(new Array());
+              gI--;
+            }
+          }
+    }
+
+  // ---------------------------------------------------------------------------------------------------  FUNÇÕES MAIS ESPECÍFICAS  <<<<<<<<<<<<<<<<<<<<<<<
+  function escritaDaMobList(){
+    escritaMobList = "this.fillMobList = function(){"; // ABRE A "fillMobList"
+
+    for(var i = 0; i < mobList.length; i++){  // PASSA TODOS OS MONTROS DA MOBLIST DAQUI PARA A FUNÇÃO "fillMobList" DO OUTRO ARQUIVO
+      escritaMobList += "mobList.push(new "
+      escritaMobList += mobList[i].mobType; // Alertar para nome dos construtores de fetroid.html, além de diferenças aqui msm de letras maiúsculas
+      escritaMobList += "(" + mobList[i].spawnI + ", " + mobList[i].spawnJ;
+
+      for(var j = 0; j < mobList[i].par.length; j++){
+        escritaMobList += ", "
+        escritaMobList += mobList[i].par[j];
+
+      }
+
+      escritaMobList += "));"
+    }
+
+    escritaMobList += "}" // FECHA AS "{}" DA FUNÇÃO "fillMobList"
+  }
+
+  function escritaDaUpgradeList(){
+    escritaUpgradeList = "this.fillUpgradeList =  function(){"; // ABRE A "fillUpgradeList"
+
+    for(var i = 0; i < upgradeList.length; i++){  // PASSA TODOS OS UPGRADES DA MOBLIST DAQUI PARA A FUNÇÃO "fillUpgradeList" DO OUTRO ARQUIVO
+      escritaUpgradeList += "upgradeList.push(new "
+      escritaUpgradeList += upgradeList[i].upgradeType; // Alertar para nome dos construtores de fetroid.html, além de diferenças aqui msm de letras maiúsculas
+      escritaUpgradeList += "(" + upgradeList[i].spawnI + ", " + upgradeList[i].spawnJ;
+
+      for(var j = 0; j < upgradeList[i].par.length; j++){
+        escritaUpgradeList += ", "
+        escritaUpgradeList += upgradeList[i].par[j];
+      }
+
+      escritaMobList += "));"
+    }
+
+    escritaMobList += "}" // FECHA AS "{}" DA FUNÇÃO "fillUpgradeList"
+  }
+
+  function escritaDeTudo(){
+    //------------------------------------- Gambiarra para passar pro Ctrl + C --------------
+    var copyText = document.getElementById("myInput");
+
+    //------------------------------------- Tira os monstros da grid ------------------------
+
+
+    //------------------------------------ ESCRITA DO MAPA ----------------------------
+    copyText.value = "this.grid = ";  // Cria a variável grid
+
+    //  Criação da grid
+    copyText.value = "["; // Abre a grid
+    for(var i = 0; i < gI; i++){
+      copyText.value += "[";
+      for(var j = 0; j < gJ; j++){
+        copyText.value += grid[i][j].toString();
+        if(j+1 < gJ)
+          copyText.value += ",";
+        else
+          copyText.value += "]";
+      }
+      if(i+1 < gI)
+        copyText.value += ",";
+      else
+        copyText.value += "];";
+    }
+
+  //------------------------------------ ESCRITA DA MOBLIST ----------------------------
+    escritaDaMobList();
+
+  //----------------------------------- PASSAR PARA CONTROL + C --------
+
+    copyText.value += escritaMobList;
+    copyText.select();
+    document.execCommand("copy");
+    alert("Mapa copiado com sucesso.");
+  }
+
+  // SELECIONA O BRUSH BASEADO NO BOTÃO APERTADO
+  function selectBrush(buttonState){
+    brushState = buttonState;
+    console.log(brushState);
+  }
+
+  function selectScreen(buttonState){
+    screenState = buttonState;
+  }
+
+  function main(){
+    canvas = document.getElementById("meuCanvas");
+    canvasWindowPercent = document.get // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+    canvas.width = width;
+    canvas.height = height;
+
+    tam = canvas.width / 20;
+    ctx = canvas.getContext("2d");
+
+    canvas.addEventListener("mousemove", mMove, false);
+    canvas.addEventListener("mousedown", mDown, false);
+    canvas.addEventListener("mouseup", mUp, false);
+    canvas.addEventListener("wheel", mWheel, false);
+
+    //LISTENER QUE SE ATENTA A RESIZE DE JANELA, CHAMANDO A FUNÇÃO "resizeCanvas"
+    window.addEventListener('resize', resizeCanvas, false);
+    window.addEventListener("keydown", keyDown, false);
+
+    document.body.appendChild(canvas);
+
+    /*gJ = parseInt(prompt("Entre o número de blocos de largura.", ""));
+    gI = parseInt(prompt("Entre o número de blocos de altura.", ""));*/
+    gJ = 5;
+    gI = 5;
+
+    // Serve para identificar logo de começo as informações da janela em que se encontra.
+    resizeCanvas();
+
+    createGrid();
+
+    run();
+  }
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth * 70/ 100;
+    canvas.height = canvas.width * height / width;
+    tam = canvas.width / 20;
+  }
+
+  function run(){
+    update();
+    render();
+    window.requestAnimationFrame(run);
+  }
+
+  function update(){
+
+  }
+
+  function render(){
+    ctx.fillStyle = "#FFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#000";
+    drawGrid();
+  }
+
+  main();
+
+</script>
+</body>
+</html>
